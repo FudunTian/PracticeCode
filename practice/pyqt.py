@@ -2,11 +2,11 @@
 from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 import sys
-import os
+import os,re
 import subprocess 
 import platform
 import traceback
-
+from PyQt4 import QtGui,QtCore
 QTextCodec.setCodecForTr(QTextCodec.codecForName("utf8"))
 class StandardDialog(QDialog):
     def __init__(self,parent=None):
@@ -36,7 +36,14 @@ class StandardDialog(QDialog):
             self.connect(yesPushButton,SIGNAL("clicked()"),self.yesTransWIN)
         elif plat == "Linux":
             self.connect(yesPushButton,SIGNAL("clicked()"),self.yesTransLIN)
-
+    def MountDriver(address,password,username):
+        pattern = re.compile(r'(\\\\(\d+\.){3}\d+)(\\\w+)')
+        match = pattern.match(address)
+        c = str(match.group(1))
+        amounted=address.replace(c,"q:")
+        #print ("net use q:" +" "+address+" "+password+" "+"/USER:"+username)
+        subprocess.call("net use q:" +" "+address+" "+password+" "+"/USER:"+username )
+        return amounted
     def fromFile(self):
         self.f=QFileDialog.getExistingDirectory(self,"Open file dialog","/")
         self.fromLineEdit.setText(str(self.f))
@@ -48,14 +55,25 @@ class StandardDialog(QDialog):
     def yesTransWIN(self):
         param = self.paraComboBox.currentText()
         command={"Basic":"-apz","Cover":"--force"}
-        f_rom = self.f
-        t_o = self.t
+        pattern = re.compile(r'(\\\\(\d+\.){3}\d+)(\\\w+)')
+        f_rom = self.fromLineEdit.text()
+        t_o = self.toLineEdit.text()
+        if pattern.match(f_rom):
+            verfication = PassWord()
+            verfication.setModal(False)
+            verfication.setWindowTitle('verfication')
+            verfication.exec_()
+            info = verfication.verfication()
+            print info
         if param == "Basic":
             run = "rsync"+ " " + command["Basic"] + " "  +"/cygdrive/"+ f_rom  + "/" + " " +"/cygdrive/"+ t_o + "/"
             run.replace("\\","/")
             run.replace(":","")
             try:
-                subprocess.call(str(run))
+                prog = subprocess.Popen (str(run),stdout = subprocess.PIPE,stderr = subprocess.PIPE)
+                prog.communicate()
+                if prog.returncode:
+                    raise Exception("program returned error code {0}".format(prog.returncode) )
                 QMessageBox.information(self,"information"," transfer successfully")
             except:
                 QMessageBox.information(self,"information",traceback.format_exc())
@@ -66,7 +84,10 @@ class StandardDialog(QDialog):
             run.replace("\\","/")
             run.replace(":","")
             try:
-                subprocess.call(str(run))
+                prog = subprocess.Popen (str(run),stdout = subprocess.PIPE,stderr = subprocess.PIPE)
+                prog.communicate()
+                if prog.returncode:
+                    raise Exception("program returned error code {0}".format(prog.returncode) )
                 QMessageBox.information(self,"information"," transfer successfully")
             except:
                 QMessageBox.information(self,"information",traceback.format_exc())
@@ -85,7 +106,10 @@ class StandardDialog(QDialog):
             run.replace("\\","/")
             run.replace(":","")
             try:
-                os.system(str(run))
+                prog = subprocess.Popen (str(run),stdout = subprocess.PIPE,stderr = subprocess.PIPE)
+                prog.communicate()
+                if prog.returncode:
+                    raise Exception("program returned error code {0}".format(prog.returncode) )
                 QMessageBox.information(self,"information"," transfer successfully")
             except:
                 QMessageBox.information(self,"information",traceback.format_exc())
@@ -96,12 +120,41 @@ class StandardDialog(QDialog):
             run.replace("\\","/")
             run.replace(":","")
             try:
-                os.system(str(run))
+                prog = subprocess.Popen (str(run),stdout = subprocess.PIPE,stderr = subprocess.PIPE)
+                prog.communicate()
+                if prog.returncode:
+                    raise Exception("program returned error code {0}".format(prog.returncode) )
                 QMessageBox.information(self,"information"," transfer successfully")
             except:
                 QMessageBox.information(self,"information",traceback.format_exc())
 
-
+                
+                
+                
+class PassWord(QtGui.QDialog):
+    def __init__(self,parent = None):    
+        self.username=QLineEdit()
+        self.password=QLineEdit()
+        userlabel = QtGui.QLabel("Username: ")
+        userlabe2 = QtGui.QLabel("Password: ")
+        self.password.setEchoMode(QtGui.QLineEdit.Password)
+        QtGui.QWidget.__init__(self)
+        yes = QtGui.QPushButton('YES')
+        layout=QGridLayout()
+        layout.addWidget(userlabel,1,0)
+        layout.addWidget(userlabe2,2,0)
+        layout.addWidget(self.username,1,1)
+        layout.addWidget(self.password,2,1)
+        layout.addWidget(yes,3,0)
+        self.setLayout(layout)
+        self.connect(yes,SIGNAL("clicked()"),self.verfication)
+    def verfication(self):
+        username = self.username.text()
+        password = self.password.text()
+        verfication = {"username":username ,"password":password}
+        return verfication
+        
+    
 app=QApplication(sys.argv)
 form=StandardDialog()
 form.show()
